@@ -5,7 +5,7 @@ package logger
 */
 
 import (
-	"log"
+	"fmt"
 	"os"
 )
 
@@ -21,25 +21,28 @@ type UPMLogger struct {
 
 func (l *UPMLogger) Info(format string, args ...interface{}) {
 	if (l.Lvl >= INFO) {
-		l.Printf(format, args...)
+		l.Printf(format + "\n", args...)
 	}
+}
+
+func (l *UPMLogger) Fatal(args ...interface{}) {
+	l.Error("FATAL: ", args...)
 }
 
 func (l *UPMLogger) Error(format string, args ...interface{}) {
 	if (l.Lvl >= INFO) {
-		l.Printf(format, args...)
+		l.Printf(format + "\n", args...)
 	}
 	os.Exit(1)
 }
 
 func (l *UPMLogger) Debug(format string, args ...interface{}) {
 	if (l.Lvl >= DEBUG) {
-		l.Printf(format, args...)
+		l.Printf(format +"\n", args...)
 	}
 }
 
 func (l *UPMLogger) Printf(format string, args ...interface{}) {
-	log.Printf(format, args...)
+	fmt.Printf(format, args...)
 }
-
 

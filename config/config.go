@@ -20,13 +20,13 @@ type UPMConfig struct {
 
 var Log logger.UPMLogger
 
-func LoadConfig(fileURL string) (UPMConfig, error) {
-	Log.Debug("Parsing config file %s", fileURL)
+func ReadConfig(fileURL string) (UPMConfig, error) {
+	Log.Debug("Parsing config file %s\n", fileURL)
 	var res UPMConfig
 	if err := gcfg.ReadFileInto(&res, fileURL); err != nil {
 		return UPMConfig{}, err
 	}
-	Log.Debug("Successfully parsed %s", fileURL)
+	Log.Debug("Successfully parsed %s\n", fileURL)
 	return res, nil
 }
 
