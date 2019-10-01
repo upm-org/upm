@@ -1,12 +1,5 @@
 package pkg
 
-import (
-	"path/filepath"
-	//"upm/logger"
-)
-
-//var Log logger.UPMLogger
-
 /*
 	Definition of a package 
 */
@@ -26,7 +19,6 @@ type PkgHead struct {
 	Version string
 	Section string
 	Architecture string
-	HashSum Hash
 }
 
 type PkgBody struct {
@@ -48,19 +40,5 @@ type Pkg struct {
 	Head PkgHead
 	Body PkgBody
 	API PkgAPI
-}
-
-func Unpack(from string) Pkg {
-	router := map[string] func(string) Pkg {
-		".deb": DEBUnpack,
-		".upm": UPMUnpack,
-	}
-	ext := filepath.Ext(from)
-	if unpack, exists := router[ext]; !exists {
-		Log.Error("Unpack: Can't unpack file with extension %s\n", ext)
-	} else {
-		return unpack(from)
-	}
-	return Pkg{}
 }
 

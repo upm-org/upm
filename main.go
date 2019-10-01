@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"flag"
+	"os"
+
 	"upm/logger"
 	"upm/config"
-	"upm/pkg"
+	"upm/pkg/manager"
 )
 
 /*
@@ -13,8 +15,6 @@ import (
 	we have to store jobs to run in main after applying config
 */
 const UNPACK = 0
-
-var cfg config.UPMConfig
 
 type Job struct {
 	jobType int
@@ -27,6 +27,17 @@ type unpackJob struct {
 
 var jobs []Job
 
+type unpackFlags []string
+
+func (i *unpackFlags) String() string {
+	return ""
+}
+
+func (i *unpackFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
 func init(){
 	/*
 		Init function
@@ -36,42 +47,45 @@ func init(){
 
 	var logLvl int
 	var configPath string
-	var unpackPath string
+	var unpackList unpackFlags
 
 	flag.IntVar(&logLvl, "log", 1, "Verbose level: 0-NONE, 1-INFO, 2-DEBUG")
 	flag.StringVar(&configPath, "config", "./config/default.conf", "Provide custom path to config file")
-	flag.StringVar(&unpackPath, "unpack", "", "Unpack selected package file")
+	flag.Var(&unpackList, "unpack", "Unpack selected packages")
 
 	flag.Parse()
 
-	log := logger.UPMLogger{
-		Lvl: logLvl,
-	}
-	// Logger injection
-	config.Log = log
-	pkg.Log = log
+	config.Config.ReadConfig(configPath)
+	config.Config.Log.Level = logLvl
+	logger.Log.Init(config.Config.Log.Level)
 
-	var err error
-	cfg, err = config.ReadConfig(configPath)
-
-	if err != nil {
-		log.Error("Failed to load config: %s", err)
+	if len(unpackList) != 0 {
+		for _, path := range unpackList {
+			jobs = append(jobs, Job{
+				UNPACK,
+				unpackJob{path},
+			})
+		}
 	}
-	jobs = append(jobs, Job{
-		UNPACK,
-		unpackJob{unpackPath},
-	})
 }
 
 func main() {
-	fmt.Println(cfg)
+	// Creating cache directory if doesn't exist
+	Log := logger.Log
+	Log.SetPrefix("main: ")
+
+	err := os.MkdirAll(config.Config.Cache.Dir, 0755)
+	if err != nil {
+		Log.Fatal("%s", err)
+	}
+
 	out := make(chan interface{})
 
 	for _, job := range jobs {
 		go func(job Job) {
 			switch(job.jobType) {
 				case UNPACK:
-					out <- pkg.Unpack(job.data.(unpackJob).from)
+					out <- manager.Unpack(job.data.(unpackJob).from)
 				default: break;
 			}
 		}(job)

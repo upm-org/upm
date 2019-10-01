@@ -16,17 +16,23 @@ type UPMConfig struct {
 		Native int
 		Debian int
 	}
+	Log struct {
+		Level int
+	}
+	Cache struct {
+		Dir string
+	}
 }
 
-var Log logger.UPMLogger
+var Config UPMConfig
 
-func ReadConfig(fileURL string) (UPMConfig, error) {
+func (conf *UPMConfig) ReadConfig(fileURL string) {
+	logger.Log.Init(logger.INFO)
+	Log := logger.Log
 	Log.Debug("Parsing config file %s\n", fileURL)
-	var res UPMConfig
-	if err := gcfg.ReadFileInto(&res, fileURL); err != nil {
-		return UPMConfig{}, err
+	if err := gcfg.ReadFileInto(conf, fileURL); err != nil {
+		Log.Fatal("%s", err)
 	}
 	Log.Debug("Successfully parsed %s\n", fileURL)
-	return res, nil
 }
 
