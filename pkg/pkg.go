@@ -22,6 +22,11 @@ type PkgHead struct {
 }
 
 type PkgBody struct {
+	FileExts []string
+	Data []byte
+}
+
+type PkgInfo struct {
 	VCS URL
 	Developers []Person
 	Maintainers []Person
@@ -38,7 +43,6 @@ type PkgAPI interface {
 
 type Pkg struct {
 	Head PkgHead
-	Body PkgBody
+	Info PkgInfo
 	API PkgAPI
 }
-

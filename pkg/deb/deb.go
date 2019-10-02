@@ -11,6 +11,6 @@ import (
 
 var Log logger.UPMLogger
 
-func Unpack(from string) pkg.Pkg {
-	return pkg.Pkg{}
+func Unpack(from, to string) *pkg.Pkg, error {
+	return nil
 }

@@ -1,13 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"flag"
 	"os"
 
+	"upm/cmd"
 	"upm/logger"
 	"upm/config"
-	"upm/pkg/manager"
 )
 
 /*
@@ -57,7 +56,7 @@ func init(){
 
 	config.Config.ReadConfig(configPath)
 	config.Config.Log.Level = logLvl
-	logger.Log.Init(config.Config.Log.Level)
+	logger.Log.Level = config.Config.Log.Level
 
 	if len(unpackList) != 0 {
 		for _, path := range unpackList {
@@ -72,27 +71,11 @@ func init(){
 func main() {
 	// Creating cache directory if doesn't exist
 	Log := logger.Log
-	Log.SetPrefix("main: ")
-
-	err := os.MkdirAll(config.Config.Cache.Dir, 0755)
-	if err != nil {
+	Log.Prefix = "main: "
+	if err := os.MkdirAll(config.Config.Cache.Dir, 0755); err != nil {
 		Log.Fatal("%s", err)
 	}
 
-	out := make(chan interface{})
-
-	for _, job := range jobs {
-		go func(job Job) {
-			switch(job.jobType) {
-				case UNPACK:
-					out <- manager.Unpack(job.data.(unpackJob).from)
-				default: break;
-			}
-		}(job)
-	}
-
-	for i := 0; i < len(jobs); i++ {
-		fmt.Println(<-out)
-	}
+	cmd.Execute()
 }
 

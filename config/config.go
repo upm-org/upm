@@ -27,8 +27,8 @@ type UPMConfig struct {
 var Config UPMConfig
 
 func (conf *UPMConfig) ReadConfig(fileURL string) {
-	logger.Log.Init(logger.INFO)
 	Log := logger.Log
+	Log.Level = logger.INFO
 	Log.Debug("Parsing config file %s\n", fileURL)
 	if err := gcfg.ReadFileInto(conf, fileURL); err != nil {
 		Log.Fatal("%s", err)

@@ -1,14 +1,16 @@
 package upm
 
 import (
+	"bytes"
 	"encoding/binary"
-	"log"
+	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 
-	"upm/config"
-	"upm/extar"
 	"upm/logger"
 	"upm/pkg"
+	"upm/x"
 )
 
 /*
@@ -16,13 +18,17 @@ import (
 
 	.upm file extension,
 
-	Chunks of data:
+	File consists of chunks seperated by newline
+
+	Chunk headers are 5 byte length (4-name, 1-newline)
+	Chunk fields are 5 byte length as well (4-name, 1-space)
+	After field content newline character is expected
+
+	File structure:
 		SIGN:
 			4 bytes - UPM signature
 
-		NEWLINE
-
-		META:
+		HEAD:
 			1 byte - data length
 			Name of the package
 
@@ -38,86 +44,212 @@ import (
 			1 byte - data length
 			Architecture of the package
 
-		NEWLINE
-
-		DATA:
-			Packed tar.{gz, xz} archive
+		BODY:
+			1 byte - data length
+			Archive type (native support: tar.xz, tar.gz) (TODO: archieve mapper plugin)
+			
+			~DATA~
 */
+func bytesToInt(s []byte) uint64 {
+	var b [8]byte
+	copy(b[8-len(s):], s)
+	return binary.BigEndian.Uint64(b[:])
+}
 
-func Unpack(from string) pkg.Pkg {
-	/*
-		Parsing file
-	*/
-	var res pkg.Pkg
+func Pack(info pkg.PkgInfo, dir, to string) {
+	//var file *os.File
+
+}
+
+func Unpack(from, to string) (*pkg.Pkg, error) {
 	var file *os.File
-
+	var res pkg.Pkg
 	Log := logger.Log
-	Log.SetPrefix(".upm/Unpack: ")
+	Log.Prefix = "upm.Open: "
 
-	readNext := func(n uint64) []byte {
-		data := make([]byte, n)
-
-		count, err := file.Read(data)
-		if err != nil {
-			Log.Fatal("%s", err)
-		}
-		Log.Debug("Read %d bytes - %s", count, string(data))
-		return data
+	type ChunkField struct {
+		name       string
+		lengthSize int
+		parse      func([]byte) error
 	}
 
-	bytesToInt := func(s []byte) uint64 {
-		var b [8]byte
-		copy(b[8-len(s):], s)
-		return binary.BigEndian.Uint64(b[:])
+	type ChunkFields []ChunkField
+
+	type Chunk struct {
+		name   string
+		fields ChunkFields
 	}
 
-	Log.Info("Parsing %s package", from)
-	Log.Info("Reading Head")
+	type Chunks []Chunk
+
+	// distanceMap shows us how many bytes are reserved for field length
+	var distanceMap = Chunks{
+		Chunk{
+			"META",
+			ChunkFields{
+				ChunkField{
+					"SIGN",
+					1,
+					func (data []byte) error {
+						signature := string(data)
+						if signature != "UPM" {
+							return fmt.Errorf("Wrong signature! Expected UPM, got %s", signature)
+						}
+
+						return nil
+					},
+				},
+			},
+		},
+		Chunk{
+			"HEAD",
+			ChunkFields{
+				ChunkField{
+					"NAME",
+					1,
+					func (data []byte) error {
+						res.Head.Name = string(data)
+
+						return nil
+					},
+				},
+				ChunkField{
+					"DESC",
+					2,
+					func (data []byte) error {
+						res.Head.Description = string(data)
+
+						return nil
+					},
+				},
+				ChunkField{
+					"VERS",
+					1,
+					func (data []byte) error {
+						res.Head.Version = string(data)
+
+						return nil
+					},
+				},
+				ChunkField{
+					"SECT",
+					1,
+					func (data []byte) error {
+						res.Head.Section = string(data)
+
+						return nil
+					},
+				},
+				ChunkField{
+					"ARCH",
+					1,
+					func (data []byte) error {
+						res.Head.Architecture = string(data)
+
+						return nil
+					},
+				},
+			},
+		},
+		Chunk{
+			"BODY",
+			ChunkFields{
+				ChunkField{
+					"COMP",
+					1,
+					func (data []byte) error {
+						var buf bytes.Buffer
+
+						fileTypes := strings.Split(string(data), ".")
+						compressed, err := ioutil.ReadAll(file)
+						if err != nil {
+							return err
+						}
+
+						if count, err := buf.Read(compressed); err != nil {
+							return err
+						} else {
+							Log.Debugf("%d bytes copied to buffer", count)
+						}
+						x.Extract(&buf, to, fileTypes)
+
+						return nil
+					},
+				},
+			},
+		},
+	}
+
 
 	file, err := os.Open(from)
 	if err != nil {
-		Log.Fatal("%s", err)
+		Log.Fatalf("%s", err)
 	}
 
-	// Parsing signature
-	if signature := string(readNext(4)); signature != "UPM\n" {
-		Log.Error("Bad signature\nExpected: UPM\nGot: %s", string(signature))
-	} else {
-		Log.Debug("signature - %s", signature)
+	for _, chunk := range distanceMap {
+		headerBuf := make([]byte, 4)
+
+		count, err := file.Read(headerBuf)
+		if err != nil {
+			return nil, err
+		}
+		header := string(headerBuf)
+		Log.Debugf("Read %d bytes - %s", count, header)
+
+		if chunk.name != header {
+			return nil, fmt.Errorf("Invalid chunk header, expected %s, but got %s", chunk.name, header)
+		}
+
+		// Skipping newline after chunk header
+		_, err = file.Seek(1, 1)
+
+		for _, field := range chunk.fields {
+			fieldBuf := make([]byte, 4)
+
+			count, err := file.Read(fieldBuf)
+			if err != nil {
+				return nil, err
+			}
+			fieldName := string(fieldBuf)
+			offset, _ := file.Seek(0, 1)
+			Log.Debugf("Current offset = %d", offset)
+			Log.Debugf("Read %d bytes - %s", count, fieldName)
+
+			if field.name != string(fieldName) {
+				return nil, fmt.Errorf("Invalid field, expected %s, but got %s", field.name, fieldName)
+			}
+
+			// Skipping space after field name
+			_, err = file.Seek(1, 1)
+
+			lengthBuf := make([]byte, field.lengthSize)
+
+			count, err = file.Read(lengthBuf)
+			if err != nil {
+				return nil, err
+			}
+			length := bytesToInt(lengthBuf)
+			Log.Debugf("Read field %s-LENGTH %d bytes - %d", field.name, count, length)
+
+			// Skipping space after field length data
+			_, err = file.Seek(1, 1)
+
+			data := make([]byte, length)
+
+			count, err = file.Read(data)
+			if err != nil {
+				return nil, err
+			}
+			Log.Debugf("Read field %s %d bytes - %s", field.name, count, string(data))
+
+			// Skipping newline after field data
+			_, err = file.Seek(1, 1)
+
+			if err := field.parse(&res, data); err != nil {
+				return nil, err
+			}
+		}
 	}
-
-	// Parsing name
-	nameLength := bytesToInt(readNext(1))
-	res.Head.Name = string(readNext(nameLength))
-
-	// Parsing description
-	descLength := bytesToInt(readNext(2))
-	res.Head.Description = string(readNext(descLength))
-
-	// Reading version
-	versLength := bytesToInt(readNext(1))
-	res.Head.Version = string(readNext(versLength))
-
-	// Reading section
-	sectLength := bytesToInt(readNext(1))
-	res.Head.Section = string(readNext(sectLength))
-
-    // Reading architecture
-	archLength := bytesToInt(readNext(1))
-	res.Head.Architecture = string(readNext(archLength))
-
-	// Reading newline
-	if newline := string(readNext(1)); newline != "\n" {
-		log.Fatal("Expected newline, got %s", newline)
-	}
-
-	Log.Info("Successfully read package Head")
-
-	Log.Info("Extracting package Body to %s", config.Config.Cache.Dir)
-
-	extar.ExtractTarGz(file, config.Config.Cache.Dir)
-
-	Log.Info("Successfully extracted package Body")
-
-	return res
+	return nil, nil
 }
+
