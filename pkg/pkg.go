@@ -44,5 +44,5 @@ type PkgAPI interface {
 type Pkg struct {
 	Head PkgHead
 	Info PkgInfo
-	API PkgAPI
+	API  PkgAPI
 }

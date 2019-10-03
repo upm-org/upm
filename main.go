@@ -4,9 +4,9 @@ import (
 	"flag"
 	"os"
 
+	"upm/config"
 	"upm/cmd"
 	"upm/logger"
-	"upm/config"
 )
 
 /*
@@ -73,7 +73,7 @@ func main() {
 	Log := logger.Log
 	Log.Prefix = "main: "
 	if err := os.MkdirAll(config.Config.Cache.Dir, 0755); err != nil {
-		Log.Fatal("%s", err)
+		Log.Fatalf("%s", err)
 	}
 
 	cmd.Execute()

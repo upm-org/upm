@@ -18,11 +18,11 @@ func Unpack(from, to string) /*(*pkg.Pkg,*/ error/*)*/ {
 	}
 	ext := filepath.Ext(from)
 
-	routedUnpack, exists := router[ext];
+	routedUnpack, exists := router[ext]
 	if !exists {
 		return /*nil,*/ fmt.Errorf("Unpack: Can't unpack file with extension %s\n", ext)
 	}
-	/*res*/_, err := routedUnpack(from, to);
+	/*res*/_, err := routedUnpack(from, to)
 	if err != nil {
 		return /*nil,*/ err
 	}

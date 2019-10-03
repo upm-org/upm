@@ -25,7 +25,7 @@ import (
 	After field content newline character is expected
 
 	File structure:
-		SIGN:
+		META:
 			4 bytes - UPM signature
 
 		HEAD:
@@ -50,6 +50,7 @@ import (
 			
 			~DATA~
 */
+
 func bytesToInt(s []byte) uint64 {
 	var b [8]byte
 	copy(b[8-len(s):], s)
@@ -58,14 +59,13 @@ func bytesToInt(s []byte) uint64 {
 
 func Pack(info pkg.PkgInfo, dir, to string) {
 	//var file *os.File
-
 }
 
 func Unpack(from, to string) (*pkg.Pkg, error) {
 	var file *os.File
 	var res pkg.Pkg
 	Log := logger.Log
-	Log.Prefix = "upm.Open: "
+	Log.Prefix = "upm: "
 
 	type ChunkField struct {
 		name       string
@@ -166,12 +166,18 @@ func Unpack(from, to string) (*pkg.Pkg, error) {
 							return err
 						}
 
-						if count, err := buf.Read(compressed); err != nil {
+						offset, _ := file.Seek(0, 1)
+
+						Log.Infof("Finished reading the file, %d bytes", offset)
+
+						if count, err := buf.Write(compressed); err != nil {
 							return err
 						} else {
 							Log.Debugf("%d bytes copied to buffer", count)
 						}
-						x.Extract(&buf, to, fileTypes)
+						if err = x.Extract(&buf, to, fileTypes); err != nil {
+							return err
+						}
 
 						return nil
 					},
@@ -187,52 +193,15 @@ func Unpack(from, to string) (*pkg.Pkg, error) {
 	}
 
 	for _, chunk := range distanceMap {
-		headerBuf := make([]byte, 4)
-
-		count, err := file.Read(headerBuf)
-		if err != nil {
-			return nil, err
-		}
-		header := string(headerBuf)
-		Log.Debugf("Read %d bytes - %s", count, header)
-
-		if chunk.name != header {
-			return nil, fmt.Errorf("Invalid chunk header, expected %s, but got %s", chunk.name, header)
-		}
-
-		// Skipping newline after chunk header
-		_, err = file.Seek(1, 1)
-
 		for _, field := range chunk.fields {
-			fieldBuf := make([]byte, 4)
-
-			count, err := file.Read(fieldBuf)
-			if err != nil {
-				return nil, err
-			}
-			fieldName := string(fieldBuf)
-			offset, _ := file.Seek(0, 1)
-			Log.Debugf("Current offset = %d", offset)
-			Log.Debugf("Read %d bytes - %s", count, fieldName)
-
-			if field.name != string(fieldName) {
-				return nil, fmt.Errorf("Invalid field, expected %s, but got %s", field.name, fieldName)
-			}
-
-			// Skipping space after field name
-			_, err = file.Seek(1, 1)
-
 			lengthBuf := make([]byte, field.lengthSize)
 
-			count, err = file.Read(lengthBuf)
+			count, err := file.Read(lengthBuf)
 			if err != nil {
 				return nil, err
 			}
 			length := bytesToInt(lengthBuf)
 			Log.Debugf("Read field %s-LENGTH %d bytes - %d", field.name, count, length)
-
-			// Skipping space after field length data
-			_, err = file.Seek(1, 1)
 
 			data := make([]byte, length)
 
@@ -242,10 +211,10 @@ func Unpack(from, to string) (*pkg.Pkg, error) {
 			}
 			Log.Debugf("Read field %s %d bytes - %s", field.name, count, string(data))
 
-			// Skipping newline after field data
+			// Skipping newline
 			_, err = file.Seek(1, 1)
 
-			if err := field.parse(&res, data); err != nil {
+			if err := field.parse(data); err != nil {
 				return nil, err
 			}
 		}

@@ -21,8 +21,6 @@ var unpackCmd = &cobra.Command{
 		errChan := make(chan error, len(sources))
 
 		for _, file := range sources {
-			print(file)
-			print("\n")
 			go func(filePath string) {
 				errChan <- manager.Unpack(filePath, to)
 			}(file)

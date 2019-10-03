@@ -10,6 +10,7 @@ var rootCmd = &cobra.Command{
 	Long: `UPM is an universal package manager created
 		to reduce amount of effort to maintain packages and to
 		be fast and easy for daily use.`,
+	SilenceUsage: true,
 }
 
 func Execute() error {
