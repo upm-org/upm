@@ -13,7 +13,7 @@ var unpackCmd = &cobra.Command{
 	Short: "Unpack packages",
 	RunE: func(c *cobra.Command, args []string) error {
 		if len(args) < 2 {
-			return fmt.Errorf("Too few arguments. Need at least one source and destination paths")
+			return fmt.Errorf("too few arguments, need at least source and destination")
 		}
 
 		to := args[len(args) - 1]

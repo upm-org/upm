@@ -11,8 +11,8 @@ import (
 )
 
 
-func Unpack(from, to string) /*(*pkg.Pkg,*/ error/*)*/ {
-	router := map[string] func(string, string) (*pkg.Pkg, error) {
+func Unpack(from, to string) /*(*pkg.PKG,*/ error/*)*/ {
+	router := map[string] func(string, string) (*pkg.PKG, error) {
 		//".deb": deb.Unpack,
 		".upm": upm.Unpack,
 	}

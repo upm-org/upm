@@ -15,57 +15,67 @@ const (
 	DEBUG = 2
 )
 
-type UPMLogger struct {
-	Level int
-	Prefix string
+var S struct {
+	Level  int
+	prefix string
 }
 
-var Log UPMLogger
+func SetPrefix(prefix string) {
+	S.prefix = prefix
+}
 
-func (l *UPMLogger) Info(format string, args ...interface{}) {
-	if l.Level >= INFO {
-		l.Println(args...)
+func SetLevel(level int) {
+	S.Level = level
+}
+
+func Info(args ...interface{}) {
+	if S.Level >= INFO {
+		Println(args...)
 	}
 }
 
-func (l *UPMLogger) Infof(format string, args ...interface{}) {
-	if l.Level >= INFO {
-		l.Printf(format + "\n", args...)
+func Infof(format string, args ...interface{}) {
+	if S.Level >= INFO {
+		Printf(format + "\n", args...)
 	}
 }
 
-func (l *UPMLogger) Fatal(format string, args ...interface{}) {
-	if l.Level >= INFO {
-		l.Println(args...)
+func Fatal(args ...interface{}) {
+	if S.Level >= INFO {
+		Println(args...)
 	}
 	os.Exit(1)
 }
 
-func (l *UPMLogger) Fatalf(format string, args ...interface{}) {
-	if l.Level >= INFO {
-		l.Printf(format + "\n", args...)
+func Fatalf(format string, args ...interface{}) {
+	if S.Level >= INFO {
+		Printf(format + "\n", args...)
 	}
 	os.Exit(1)
 }
 
-func (l *UPMLogger) Debug(args ...interface{}) {
-	if l.Level >= DEBUG {
-		l.Println(args...)
+func Debug(args ...interface{}) {
+	if S.Level >= DEBUG {
+		Println(args...)
 	}
 }
 
-func (l *UPMLogger) Debugf(format string, args ...interface{}) {
-	if l.Level >= DEBUG {
-		l.Printf(format +"\n", args...)
+func Debugf(format string, args ...interface{}) {
+	if S.Level >= DEBUG {
+		Printf(format +"\n", args...)
 	}
 }
 
-func (l *UPMLogger) Printf(format string, args ...interface{}) {
-	fmt.Printf(l.Prefix + format, args...)
+func Printf(format string, args ...interface{}) {
+	if S.Level != NONE {
+		fmt.Printf(S.prefix + format, args...)
+	}
 }
 
-func (l *UPMLogger) Println(args ...interface{}) {
-	fmt.Print(l.Prefix)
-	fmt.Println(args...)
+func Println(args ...interface{}) {
+	if S.Level != NONE {
+		fmt.Print(S.prefix)
+		fmt.Println(args...)
+	}
 }
 
