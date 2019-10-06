@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	"upm/pkg/manager"
+
+	"github.com/spf13/cobra"
 )
 
 var unpackCmd = &cobra.Command{
