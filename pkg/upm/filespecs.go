@@ -102,7 +102,7 @@ var chunkHandler = Chunks{
 				"COMP",
 				1,
 				func (res *pkg.PKG, data []byte) error {
-					res.Body = pkg.PKGBody{strings.Split(string(data), "."), new(bytes.Buffer)}
+					res.Body = pkg.PKGBody{Pack: strings.Split(string(data), "."), Data: new(bytes.Buffer)}
 
 					return nil
 				},

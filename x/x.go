@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"upm/x/tar"
 	"upm/x/gz"
+	"upm/x/tar"
 	"upm/x/xz"
 )
 
